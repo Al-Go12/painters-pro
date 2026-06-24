@@ -355,7 +355,7 @@ export default function ProductsPage() {
 
       {/* Filters + search panel */}
       <div className="bg-white rounded-2xl border border-[var(--color-np-border)] shadow-sm px-4 py-4 space-y-3">
-        <div className="relative">
+        <div className="relative max-w-sm">
           <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-np-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
           </svg>
@@ -441,7 +441,7 @@ export default function ProductsPage() {
                 {products.map((p) => {
                   const typeLabel = PRODUCT_TYPES.find((t) => t.value === p.productType)?.label || p.productType;
                   return (
-                    <tr key={p._id} className="hover:bg-[var(--color-np-cream)] transition-colors group">
+                    <tr key={p._id} className="hover:bg-[var(--color-np-cream)] transition-colors">
                       <td className="px-4 py-3.5 font-semibold text-[var(--color-np-text)] truncate">{p.name}</td>
                       <td className="px-4 py-3.5">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${CLASS_STYLE[p.classification] || CLASS_STYLE.interior}`}>
@@ -465,7 +465,7 @@ export default function ProductsPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3.5">
-                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center justify-end gap-1">
                           <button onClick={() => openEdit(p)}
                             className="p-1.5 rounded-lg text-[var(--color-np-muted)] hover:text-[var(--color-np-red)] hover:bg-red-50 transition-colors" title="Edit">
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

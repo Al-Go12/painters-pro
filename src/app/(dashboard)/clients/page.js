@@ -189,7 +189,7 @@ export default function ClientsPage() {
       </div>
 
       {/* Search */}
-      <div className="relative">
+      <div className="relative max-w-sm">
         <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-np-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
         </svg>
@@ -255,7 +255,7 @@ export default function ClientsPage() {
               </thead>
               <tbody className="divide-y divide-[var(--color-np-border)]">
                 {clients.map((c) => (
-                  <tr key={c._id} className="hover:bg-[var(--color-np-cream)] transition-colors group">
+                  <tr key={c._id} className="hover:bg-[var(--color-np-cream)] transition-colors">
                     <td className="px-4 py-3.5">
                       <p className="font-semibold text-[var(--color-np-text)] truncate">{c.name}</p>
                       {c.company && <p className="text-xs text-[var(--color-np-muted)] truncate mt-0.5">{c.company}</p>}
@@ -268,7 +268,7 @@ export default function ClientsPage() {
                     <td className="px-4 py-3.5"><TypeBadge type={c.clientType} /></td>
                     <td className="px-4 py-3.5"><StatusBadge status={c.status} /></td>
                     <td className="px-4 py-3.5">
-                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center justify-end gap-1">
                         <button onClick={() => router.push(`/clients/${c._id}`)}
                           className="px-3 py-1.5 text-xs font-semibold text-[var(--color-np-red)] border border-[var(--color-np-red)] rounded-lg hover:bg-[var(--color-np-red)] hover:text-white transition-colors">
                           Open
