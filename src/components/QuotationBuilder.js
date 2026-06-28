@@ -145,7 +145,6 @@ function InteriorCalcModal({ initial, onSave, onClose }) {
                             <button type="button" onClick={addFn}
                               className="text-[10px] font-semibold text-[var(--color-np-red)] hover:text-[var(--color-np-red-dark)] transition-colors">+ Add</button>
                           </div>
-                          {!items.length && <p className="text-[11px] text-[var(--color-np-muted)] italic">None</p>}
                           <div className="space-y-1">
                             {items.map((d) => (
                               <div key={d.id} className="flex items-center gap-1.5">
@@ -411,7 +410,7 @@ function ProductPicker({ products, onAdd }) {
   }
 
   return (
-    <div className="px-4 py-3 border-b border-[var(--color-np-border)] bg-[var(--color-np-gray)]">
+    <div className="px-4 py-3 border-b border-[var(--color-np-border)]">
       <div className="flex items-center gap-2 max-w-lg">
         {/* Search input */}
         <div className="relative flex-1">
@@ -513,16 +512,16 @@ function LineItem({ item, index, onUpdate, onRemove }) {
           className="w-full px-2 py-2 rounded-xl border border-[var(--color-np-border)] bg-[var(--color-np-gray)] text-sm text-center focus:outline-none focus:ring-2 focus:ring-[var(--color-np-red)] transition" />
       </td>
 
-      {/* Colour hex */}
-      <td className="px-3 py-3 w-36">
-        <div className="flex items-center gap-1.5">
-          <div className="w-7 h-7 rounded-lg border-2 border-[var(--color-np-border)] flex-shrink-0"
-            style={{ background: item.colourHex && /^#[0-9A-Fa-f]{6}$/.test(item.colourHex) ? item.colourHex : '#f4f4f4' }} />
-          <input type="text" maxLength={7} value={item.colourHex || ''}
-            onChange={(e) => { let v = e.target.value; if (v && !v.startsWith('#')) v = '#' + v; onUpdate({ colourHex: v }); }}
-            placeholder="#RRGGBB"
-            className="flex-1 min-w-0 px-2 py-2 rounded-xl border border-[var(--color-np-border)] bg-[var(--color-np-gray)] text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[var(--color-np-red)] transition" />
-        </div>
+      {/* Colour */}
+      <td className="px-3 py-3 w-14">
+        <label className="cursor-pointer relative inline-block">
+          <div className="w-8 h-8 rounded-lg border-2 border-[var(--color-np-border)] transition-colors"
+            style={{ background: item.colourHex && /^#[0-9A-Fa-f]{6}$/.test(item.colourHex) ? item.colourHex : '#eeeeee' }} />
+          <input type="color"
+            value={item.colourHex && /^#[0-9A-Fa-f]{6}$/.test(item.colourHex) ? item.colourHex : '#ffffff'}
+            onChange={(e) => onUpdate({ colourHex: e.target.value })}
+            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
+        </label>
       </td>
 
       {/* Unit price */}
@@ -764,107 +763,81 @@ export default function QuotationBuilder({ quotationId, clientId: initClientId, 
   return (
     <div className="flex flex-col gap-0 min-h-full">
       {/* ── Top header bar ── */}
-      <div className="bg-white border-b border-[var(--color-np-border)] px-6 py-3 flex items-center justify-between gap-4 flex-wrap sticky top-0 z-10 shadow-sm">
+      <div className="bg-white border-b border-[var(--color-np-border)] px-5 py-3 flex items-center justify-between gap-3 sticky top-0 z-10">
         <div className="flex items-center gap-3 min-w-0">
           <button type="button" onClick={() => router.push(`/clients/${clientId}`)}
             className="text-[var(--color-np-muted)] hover:text-[var(--color-np-red)] transition-colors flex-shrink-0">
             <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
           </button>
           <div className="min-w-0">
-            <p className="font-black text-[var(--color-np-text)] text-sm leading-none truncate">{client?.name || '—'}</p>
-            <p className="text-xs text-[var(--color-np-muted)] mt-0.5">{qNum}</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="font-bold text-[var(--color-np-text)] text-sm truncate">{client?.name || '—'}</p>
+              <span className="text-[10px] font-mono text-[var(--color-np-muted)] bg-[var(--color-np-gray)] px-1.5 py-0.5 rounded flex-shrink-0">{qNum}</span>
+            </div>
+            {quotation?.createdAt && (
+              <p className="text-[11px] text-[var(--color-np-muted)] mt-0.5">
+                {new Date(quotation.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+              </p>
+            )}
           </div>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <button type="button" onClick={() => save('draft')} disabled={saving}
-            className="px-4 py-2 rounded-xl border border-[var(--color-np-border)] text-xs font-bold text-[var(--color-np-text)] hover:bg-[var(--color-np-gray)] disabled:opacity-50 transition-colors">
-            Save Draft
-          </button>
-          <button type="button" onClick={() => save('saved')} disabled={saving}
-            className="px-5 py-2 rounded-xl bg-[var(--color-np-red)] text-white text-xs font-bold hover:bg-[var(--color-np-red-dark)] disabled:opacity-60 transition-colors shadow-sm">
-            {saving ? 'Saving…' : 'Save Quotation'}
-          </button>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           {quotationId && (
             <>
-              <div className="w-px h-6 bg-[var(--color-np-border)]" />
-              {/* WhatsApp — opens modal */}
-              <button type="button" onClick={() => setShowWhatsApp(true)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-green-300 bg-green-50 text-green-700 text-xs font-bold hover:bg-green-100 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+              <button type="button" onClick={() => setShowWhatsApp(true)} title="Send via WhatsApp"
+                className="p-2 rounded-lg border border-green-200 text-green-600 hover:bg-green-50 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
                 </svg>
-                WhatsApp
               </button>
-              {/* Print — react-to-print (no new tab) */}
-              <button type="button" onClick={() => handlePrint()}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[var(--color-np-border)] text-xs font-bold text-[var(--color-np-text)] hover:bg-[var(--color-np-gray)] transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <button type="button" onClick={() => handlePrint()} title="Print"
+                className="p-2 rounded-lg border border-[var(--color-np-border)] text-[var(--color-np-muted)] hover:bg-[var(--color-np-gray)] transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                 </svg>
-                Print
               </button>
+              <div className="w-px h-5 bg-[var(--color-np-border)] mx-0.5" />
             </>
           )}
+          <button type="button" onClick={() => save('draft')} disabled={saving}
+            className="px-3 py-2 rounded-lg text-xs font-semibold text-[var(--color-np-muted)] hover:text-[var(--color-np-text)] hover:bg-[var(--color-np-gray)] disabled:opacity-50 transition-colors">
+            Draft
+          </button>
+          <button type="button" onClick={() => save('saved')} disabled={saving}
+            className="px-4 py-2 rounded-lg bg-[var(--color-np-red)] text-white text-xs font-bold hover:bg-[var(--color-np-red-dark)] disabled:opacity-60 transition-colors shadow-sm">
+            {saving ? 'Saving…' : 'Save'}
+          </button>
         </div>
       </div>
 
-      {/* ── Client strip ── */}
-      {client && (
-        <div className="bg-[var(--color-np-cream)] border-b border-[var(--color-np-border)] px-6 py-2.5 flex items-center gap-6 text-sm flex-wrap">
-          <span className="font-bold text-[var(--color-np-text)]">{client.name}</span>
-          {client.mobile && <span className="text-[var(--color-np-muted)]">{client.mobile}</span>}
-          {client.email  && <span className="text-[var(--color-np-muted)]">{client.email}</span>}
-          {(client.address?.city || client.address?.state) && (
-            <span className="text-[var(--color-np-muted)]">{[client.address.city, client.address.state].filter(Boolean).join(', ')}</span>
-          )}
-          <span className="ml-auto text-xs text-[var(--color-np-muted)]">
-            {quotation?.createdAt ? new Date(quotation.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleDateString('en-IN')}
+      {/* ── Measurements bar ── */}
+      <div className="border-b border-[var(--color-np-border)] bg-[var(--color-np-gray)] px-5 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-2">
+        <span className="text-[10px] font-bold text-[var(--color-np-muted)] uppercase tracking-widest">Measurements</span>
+        <div className="w-px h-4 bg-[var(--color-np-border)]" />
+        {/* Interior */}
+        <button type="button" onClick={() => setShowIntCalc(true)}
+          className={`relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors ${interiorCalc ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-[var(--color-np-border)] text-[var(--color-np-text)] hover:border-indigo-300 hover:text-indigo-700'}`}>
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+          Interior
+          {interiorCalc && <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 absolute -top-0.5 -right-0.5" />}
+        </button>
+        {interiorCalc && (
+          <span className="text-xs text-indigo-600 bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded-lg">
+            {interiorCalc.netWallArea?.toFixed(0)} sq ft · P {roundUpToHalf(interiorCalc.primerLitres||0).toFixed(1)} L · W {roundUpToHalf(interiorCalc.interiorLitres||0).toFixed(1)} L · C {roundUpToHalf(interiorCalc.ceilingLitres||0).toFixed(1)} L
           </span>
-        </div>
-      )}
-
-      {/* ── Measurements ── */}
-      <div className="px-6 pt-4 flex flex-wrap gap-4 items-start">
-        {/* Interior Calc */}
-        <div className="flex flex-col gap-1.5">
-          <button type="button" onClick={() => setShowIntCalc(true)}
-            className={`relative inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border text-xs font-bold transition-colors ${interiorCalc ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-[var(--color-np-border)] text-[var(--color-np-text)] hover:border-indigo-300 hover:text-indigo-700'}`}>
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
-            Interior Calc
-            {interiorCalc && <span className="w-2 h-2 rounded-full bg-indigo-500 absolute -top-1 -right-1" />}
-          </button>
-          {interiorCalc && (
-            <div className="flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-xl px-3 py-2 text-xs flex-wrap">
-              <span className="text-indigo-600">{interiorCalc.netWallArea?.toFixed(0)} sq ft net</span>
-              <span className="text-indigo-400">·</span>
-              <span className="text-indigo-600">Primer {roundUpToHalf(interiorCalc.primerLitres || 0).toFixed(1)} L</span>
-              <span className="text-indigo-400">·</span>
-              <span className="text-indigo-600">Wall {roundUpToHalf(interiorCalc.interiorLitres || 0).toFixed(1)} L</span>
-              <span className="text-indigo-400">·</span>
-              <span className="text-indigo-600">Ceiling {roundUpToHalf(interiorCalc.ceilingLitres || 0).toFixed(1)} L</span>
-            </div>
-          )}
-        </div>
-        {/* Exterior Calc */}
-        <div className="flex flex-col gap-1.5">
-          <button type="button" onClick={() => setShowExtCalc(true)}
-            className={`relative inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border text-xs font-bold transition-colors ${exteriorCalc ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-white border-[var(--color-np-border)] text-[var(--color-np-text)] hover:border-amber-300 hover:text-amber-700'}`}>
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-            Exterior Calc
-            {exteriorCalc && <span className="w-2 h-2 rounded-full bg-amber-500 absolute -top-1 -right-1" />}
-          </button>
-          {exteriorCalc && (
-            <div className="flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 text-xs flex-wrap">
-              <span className="text-amber-600">{exteriorCalc.netArea?.toFixed(0)} sq ft net</span>
-              <span className="text-amber-400">·</span>
-              <span className="text-amber-600">Primer {roundUpToHalf(exteriorCalc.primerLitres || 0).toFixed(1)} L</span>
-              <span className="text-amber-400">·</span>
-              <span className="text-amber-600">Wall {roundUpToHalf(exteriorCalc.paintLitres || 0).toFixed(1)} L</span>
-              <span className="text-amber-400">·</span>
-              <span className="text-amber-600">Terrace {roundUpToHalf(exteriorCalc.terraceLitres || 0).toFixed(1)} L</span>
-            </div>
-          )}
-        </div>
+        )}
+        {/* Exterior */}
+        <button type="button" onClick={() => setShowExtCalc(true)}
+          className={`relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors ${exteriorCalc ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-white border-[var(--color-np-border)] text-[var(--color-np-text)] hover:border-amber-300 hover:text-amber-700'}`}>
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+          Exterior
+          {exteriorCalc && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 absolute -top-0.5 -right-0.5" />}
+        </button>
+        {exteriorCalc && (
+          <span className="text-xs text-amber-600 bg-amber-50 border border-amber-100 px-2.5 py-1 rounded-lg">
+            {exteriorCalc.netArea?.toFixed(0)} sq ft · P {roundUpToHalf(exteriorCalc.primerLitres||0).toFixed(1)} L · W {roundUpToHalf(exteriorCalc.paintLitres||0).toFixed(1)} L · T {roundUpToHalf(exteriorCalc.terraceLitres||0).toFixed(1)} L
+          </span>
+        )}
       </div>
 
       {/* ── Product line items table ── */}
@@ -895,7 +868,7 @@ export default function QuotationBuilder({ quotationId, clientId: initClientId, 
                     <th className="px-3 py-2.5 text-[11px] font-bold text-[var(--color-np-muted)] uppercase tracking-wide text-left">Product</th>
                     <th className="px-3 py-2.5 text-[11px] font-bold text-[var(--color-np-muted)] uppercase tracking-wide text-left">Size</th>
                     <th className="px-3 py-2.5 text-[11px] font-bold text-[var(--color-np-muted)] uppercase tracking-wide w-20 text-center">Qty</th>
-                    <th className="px-3 py-2.5 text-[11px] font-bold text-[var(--color-np-muted)] uppercase tracking-wide w-36 text-left">Colour</th>
+                    <th className="px-3 py-2.5 text-[11px] font-bold text-[var(--color-np-muted)] uppercase tracking-wide w-14 text-left">Colour</th>
                     <th className="px-3 py-2.5 text-[11px] font-bold text-[var(--color-np-muted)] uppercase tracking-wide w-28 text-right">Unit Price</th>
                     <th className="px-3 py-2.5 text-[11px] font-bold text-[var(--color-np-muted)] uppercase tracking-wide w-28 text-right">Amount</th>
                     <th className="w-10" />
@@ -959,14 +932,14 @@ export default function QuotationBuilder({ quotationId, clientId: initClientId, 
                       </div>
                       <div>
                         <p className="text-xs font-semibold text-[var(--color-np-muted)] mb-1">Colour</p>
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-8 h-8 rounded-lg border-2 border-[var(--color-np-border)] flex-shrink-0"
-                            style={{ background: item.colourHex && /^#[0-9A-Fa-f]{6}$/.test(item.colourHex) ? item.colourHex : '#f4f4f4' }} />
-                          <input type="text" maxLength={7} value={item.colourHex || ''}
-                            onChange={(e) => { let v = e.target.value; if (v && !v.startsWith('#')) v = '#' + v; updateItem(item.id, { colourHex: v }); }}
-                            placeholder="#RRGGBB"
-                            className="flex-1 min-w-0 px-2 py-2 rounded-xl border border-[var(--color-np-border)] bg-[var(--color-np-gray)] text-xs font-mono" />
-                        </div>
+                        <label className="cursor-pointer relative inline-block">
+                          <div className="w-10 h-10 rounded-xl border-2 border-[var(--color-np-border)]"
+                            style={{ background: item.colourHex && /^#[0-9A-Fa-f]{6}$/.test(item.colourHex) ? item.colourHex : '#eeeeee' }} />
+                          <input type="color"
+                            value={item.colourHex && /^#[0-9A-Fa-f]{6}$/.test(item.colourHex) ? item.colourHex : '#ffffff'}
+                            onChange={(e) => updateItem(item.id, { colourHex: e.target.value })}
+                            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" />
+                        </label>
                       </div>
                     </div>
                     <div className="flex items-center justify-between pt-1 border-t border-[var(--color-np-border)]">
@@ -1002,19 +975,9 @@ export default function QuotationBuilder({ quotationId, clientId: initClientId, 
             </div>
 
             {/* Totals */}
-            <div className="p-5 flex flex-col justify-between">
-              <p className="text-xs font-bold text-[var(--color-np-muted)] uppercase tracking-widest mb-3">Summary</p>
-              <div className="space-y-2">
-                {items.filter((i) => i.productId && i.amount).map((item) => (
-                  <div key={item.id} className="flex items-center justify-between text-sm">
-                    <span className="text-[var(--color-np-muted)] truncate mr-3">{item.productName} ({item.size?.qty}{item.size?.unit} × {item.quantity})</span>
-                    <span className="font-semibold text-[var(--color-np-text)] flex-shrink-0">₹{fmtINR(item.amount)}</span>
-                  </div>
-                ))}
-              </div>
-
+            <div className="p-5 flex flex-col justify-end gap-3">
               {/* Discount row */}
-              <div className="mt-4 pt-4 border-t border-[var(--color-np-border)] space-y-3">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-[var(--color-np-muted)]">Subtotal</span>
                   <span className="font-semibold text-[var(--color-np-text)]">₹{fmtINR(totalAmount)}</span>
