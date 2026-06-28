@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useReactToPrint } from 'react-to-print';
 import {
@@ -17,47 +17,55 @@ const newId   = () => Math.random().toString(36).slice(2);
 
 /* ─────────────────────────────────────────────────────────── Interior calc modal */
 function InteriorCalcModal({ initial, onSave, onClose }) {
-  const newRoom   = (n = 1) => ({ id: newId(), name: `Room ${n}`, length: '', width: '', height: '' });
-  const newDeduct = () => ({ id: newId(), size: String(DOOR_SIZES[0].area), count: 1 });
+  const newRoom = (n = 1) => ({ id: newId(), name: `Room ${n}`, length: '', width: '', height: '', doors: [], windows: [] });
+  const newDoor = () => ({ id: newId(), size: String(DOOR_SIZES[0].area), count: 1 });
+  const newWin  = () => ({ id: newId(), size: String(WINDOW_SIZES[0].area), count: 1 });
 
   const [unit,          setUnit]          = useState(initial?.unit          || 'ft');
   const [primerCoats,   setPrimerCoats]   = useState(initial?.primerCoats   ?? 1);
   const [interiorCoats, setInteriorCoats] = useState(initial?.interiorCoats ?? 2);
   const [ceilingCoats,  setCeilingCoats]  = useState(initial?.ceilingCoats  ?? 1);
-  const [rooms,         setRooms]         = useState(() =>
-    initial?.rooms?.length ? initial.rooms.map((r) => ({ ...r, id: newId() })) : [newRoom()]
-  );
-  const [doors,         setDoors]         = useState(() =>
-    initial?.doors?.length ? initial.doors.map((d) => ({ ...d, id: newId() })) : []
-  );
-  const [windows,       setWindows]       = useState(() =>
-    initial?.windows?.length ? initial.windows.map((w) => ({ ...w, id: newId() })) : []
-  );
-  const [result,  setResult]  = useState(null);
-  const [saving,  setSaving]  = useState(false);
-  const [error,   setError]   = useState('');
+  const [rooms,         setRooms]         = useState(() => {
+    if (initial?.rooms?.length) {
+      return initial.rooms.map((r, i) => ({
+        ...r, id: newId(),
+        doors:   i === 0 ? (initial.doors   || []).map((d) => ({ ...d, id: newId() })) : [],
+        windows: i === 0 ? (initial.windows || []).map((w) => ({ ...w, id: newId() })) : [],
+      }));
+    }
+    return [newRoom()];
+  });
+  const [result, setResult] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [error,  setError]  = useState('');
 
   const updRoom = (id, f, v) => setRooms((rs) => rs.map((r) => r.id === id ? { ...r, [f]: v } : r));
-  const updDeduct = (setter) => (id, f, v) => setter((ds) => ds.map((d) => d.id === id ? { ...d, [f]: v } : d));
+
+  const addDoor  = (rid) => setRooms((rs) => rs.map((r) => r.id === rid ? { ...r, doors:   [...r.doors,   newDoor()] } : r));
+  const addWin   = (rid) => setRooms((rs) => rs.map((r) => r.id === rid ? { ...r, windows: [...r.windows, newWin()]  } : r));
+  const updDed   = (rid, did, f, v, type) =>
+    setRooms((rs) => rs.map((r) => r.id !== rid ? r : { ...r, [type]: r[type].map((d) => d.id === did ? { ...d, [f]: v } : d) }));
+  const rmDed    = (rid, did, type) =>
+    setRooms((rs) => rs.map((r) => r.id !== rid ? r : { ...r, [type]: r[type].filter((d) => d.id !== did) }));
 
   function calculate() {
     setError('');
     const validRooms = rooms.filter((r) => Number(r.length) > 0 && Number(r.width) > 0 && Number(r.height) > 0);
     if (!validRooms.length) { setError('Enter L × W × H for at least one room.'); return; }
-    const doorRows   = doors.map((d)   => ({ size: d.size, count: d.count }));
-    const windowRows = windows.map((w) => ({ size: w.size, count: w.count }));
-    setResult(calcInterior({ rooms: validRooms, doors: doorRows, windows: windowRows, unit, primerCoats, interiorCoats, ceilingCoats }));
+    const allDoors   = rooms.flatMap((r) => r.doors.map((d) => ({ size: d.size, count: d.count })));
+    const allWindows = rooms.flatMap((r) => r.windows.map((w) => ({ size: w.size, count: w.count })));
+    setResult(calcInterior({ rooms: validRooms, doors: allDoors, windows: allWindows, unit, primerCoats, interiorCoats, ceilingCoats }));
   }
 
   async function handleSave() {
     if (!result) { calculate(); return; }
     setSaving(true);
     const validRooms = rooms.filter((r) => Number(r.length) > 0 && Number(r.width) > 0 && Number(r.height) > 0);
-    const doorRows   = doors.map((d)   => ({ size: d.size, count: Number(d.count) }));
-    const windowRows = windows.map((w) => ({ size: w.size, count: Number(w.count) }));
+    const allDoors   = rooms.flatMap((r) => r.doors.map((d) => ({ size: d.size, count: Number(d.count) })));
+    const allWindows = rooms.flatMap((r) => r.windows.map((w) => ({ size: w.size, count: Number(w.count) })));
     await onSave({
       rooms: validRooms.map(({ name, length, width, height }) => ({ name, length: Number(length), width: Number(width), height: Number(height) })),
-      doors: doorRows, windows: windowRows,
+      doors: allDoors, windows: allWindows,
       unit, primerCoats, interiorCoats, ceilingCoats,
       ...result, savedAt: new Date().toISOString(),
     });
@@ -65,8 +73,9 @@ function InteriorCalcModal({ initial, onSave, onClose }) {
     onClose();
   }
 
-  const inp = 'w-full px-3 py-2 rounded-xl border border-[var(--color-np-border)] bg-[var(--color-np-gray)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-np-red)] focus:border-transparent transition';
-  const sel = inp + ' appearance-none';
+  const inp  = 'w-full px-3 py-2 rounded-xl border border-[var(--color-np-border)] bg-[var(--color-np-gray)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-np-red)] focus:border-transparent transition';
+  const sel  = inp + ' appearance-none';
+  const dInp = 'px-2 py-1 rounded-lg border border-[var(--color-np-border)] bg-white text-xs focus:outline-none focus:ring-1 focus:ring-[var(--color-np-red)] transition';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6 overflow-y-auto" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -94,7 +103,7 @@ function InteriorCalcModal({ initial, onSave, onClose }) {
             ))}
           </div>
 
-          {/* Rooms */}
+          {/* Rooms with per-room doors & windows */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-bold text-[var(--color-np-text)]">Rooms</span>
@@ -103,15 +112,17 @@ function InteriorCalcModal({ initial, onSave, onClose }) {
                 + Add Room
               </button>
             </div>
-            <div className="rounded-xl border border-[var(--color-np-border)] overflow-hidden">
-              <div className="grid grid-cols-[1fr_80px_80px_80px_32px] bg-[var(--color-np-gray)] px-3 py-2 border-b border-[var(--color-np-border)]">
-                {['Room Name', 'Length', 'Width', 'Height', ''].map((h) => (
-                  <span key={h} className="text-[10px] font-bold text-[var(--color-np-muted)] uppercase tracking-wide">{h}</span>
-                ))}
-              </div>
-              <div className="divide-y divide-[var(--color-np-border)]">
-                {rooms.map((r) => (
-                  <div key={r.id} className="grid grid-cols-[1fr_80px_80px_80px_32px] items-center gap-2 px-3 py-2">
+            {/* Column labels */}
+            <div className="grid grid-cols-[1fr_80px_80px_80px_32px] gap-2 px-3 pb-1">
+              {['Room Name', 'Length', 'Width', 'Height', ''].map((h) => (
+                <span key={h} className="text-[10px] font-bold text-[var(--color-np-muted)] uppercase tracking-wide">{h}</span>
+              ))}
+            </div>
+            <div className="space-y-2">
+              {rooms.map((r) => (
+                <div key={r.id} className="rounded-xl border border-[var(--color-np-border)] overflow-hidden">
+                  {/* Dimension row */}
+                  <div className="grid grid-cols-[1fr_80px_80px_80px_32px] items-center gap-2 px-3 py-2.5 bg-white">
                     <input placeholder="e.g. Bedroom" value={r.name} onChange={(e) => updRoom(r.id, 'name', e.target.value)} className={inp} />
                     <input type="number" min="0" step="0.1" placeholder="0" value={r.length} onChange={(e) => updRoom(r.id, 'length', e.target.value)} className={inp} />
                     <input type="number" min="0" step="0.1" placeholder="0" value={r.width}  onChange={(e) => updRoom(r.id, 'width',  e.target.value)} className={inp} />
@@ -121,45 +132,43 @@ function InteriorCalcModal({ initial, onSave, onClose }) {
                       <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                   </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Deductions — doors & windows side by side, each with full-width selects */}
-          <div className="grid grid-cols-2 gap-6">
-            {[
-              { label: 'Doors', items: doors, setItems: setDoors, sizes: DOOR_SIZES, updFn: updDeduct(setDoors) },
-              { label: 'Windows', items: windows, setItems: setWindows, sizes: WINDOW_SIZES, updFn: updDeduct(setWindows) },
-            ].map(({ label, items, setItems, sizes, updFn }) => (
-              <div key={label} className="bg-[var(--color-np-gray)] rounded-xl p-3">
-                <div className="flex items-center justify-between mb-2.5">
-                  <span className="text-sm font-bold text-[var(--color-np-text)]">{label}</span>
-                  <button type="button" onClick={() => setItems((ds) => [...ds, newDeduct()])}
-                    className="text-xs font-semibold text-[var(--color-np-red)] hover:text-[var(--color-np-red-dark)] transition-colors">+ Add</button>
-                </div>
-                {!items.length && <p className="text-xs text-[var(--color-np-muted)] italic">None added</p>}
-                <div className="space-y-2">
-                  {items.map((d) => (
-                    <div key={d.id} className="flex items-center gap-2">
-                      <select
-                        value={d.size}
-                        onChange={(e) => updFn(d.id, 'size', e.target.value)}
-                        className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-[var(--color-np-border)] bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-np-red)] focus:border-transparent transition"
-                      >
-                        {sizes.map((s) => <option key={s.area} value={String(s.area)}>{s.label}</option>)}
-                      </select>
-                      <input type="number" min="1" value={d.count} onChange={(e) => updFn(d.id, 'count', e.target.value)}
-                        className="w-14 px-2 py-2 rounded-xl border border-[var(--color-np-border)] bg-white text-sm text-center focus:outline-none focus:ring-2 focus:ring-[var(--color-np-red)] transition flex-shrink-0" />
-                      <button type="button" onClick={() => setItems((ds) => ds.filter((x) => x.id !== d.id))}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg text-[var(--color-np-muted)] hover:text-red-500 hover:bg-red-50 transition flex-shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                      </button>
+                  {/* Per-room doors & windows */}
+                  <div className="px-3 py-2.5 bg-[var(--color-np-gray)] border-t border-[var(--color-np-border)]">
+                    <div className="grid grid-cols-2 gap-4">
+                      {[
+                        { label: 'Doors', type: 'doors', items: r.doors, sizes: DOOR_SIZES, addFn: () => addDoor(r.id) },
+                        { label: 'Windows', type: 'windows', items: r.windows, sizes: WINDOW_SIZES, addFn: () => addWin(r.id) },
+                      ].map(({ label, type, items, sizes, addFn }) => (
+                        <div key={label}>
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <span className="text-[10px] font-bold text-[var(--color-np-muted)] uppercase tracking-wide">{label}</span>
+                            <button type="button" onClick={addFn}
+                              className="text-[10px] font-semibold text-[var(--color-np-red)] hover:text-[var(--color-np-red-dark)] transition-colors">+ Add</button>
+                          </div>
+                          {!items.length && <p className="text-[11px] text-[var(--color-np-muted)] italic">None</p>}
+                          <div className="space-y-1">
+                            {items.map((d) => (
+                              <div key={d.id} className="flex items-center gap-1.5">
+                                <select value={d.size} onChange={(e) => updDed(r.id, d.id, 'size', e.target.value, type)}
+                                  className={`flex-1 min-w-0 ${dInp}`}>
+                                  {sizes.map((s) => <option key={s.area} value={String(s.area)}>{s.label}</option>)}
+                                </select>
+                                <input type="number" min="1" value={d.count} onChange={(e) => updDed(r.id, d.id, 'count', e.target.value, type)}
+                                  className={`w-10 text-center flex-shrink-0 ${dInp}`} />
+                                <button type="button" onClick={() => rmDed(r.id, d.id, type)}
+                                  className="flex-shrink-0 text-[var(--color-np-muted)] hover:text-red-500 transition">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
 
           {/* Coats */}
@@ -475,6 +484,9 @@ function LineItem({ item, index, onUpdate, onRemove }) {
         {item.productData?.productType && (
           <p className="text-xs text-[var(--color-np-muted)] mt-0.5 capitalize">{item.productData.productType}</p>
         )}
+        {item.totalLitres > 0 && (
+          <p className="text-[11px] font-semibold text-indigo-600 mt-0.5">{Math.round(item.totalLitres * 110)} sq ft</p>
+        )}
       </td>
 
       {/* Size chips */}
@@ -764,21 +776,6 @@ export default function QuotationBuilder({ quotationId, clientId: initClientId, 
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Interior Calc button */}
-          <button type="button" onClick={() => setShowIntCalc(true)}
-            className={`relative inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border text-xs font-bold transition-colors ${interiorCalc ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-[var(--color-np-border)] text-[var(--color-np-text)] hover:border-indigo-300 hover:text-indigo-700'}`}>
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
-            Interior Calc
-            {interiorCalc && <span className="w-2 h-2 rounded-full bg-indigo-500 absolute -top-1 -right-1" />}
-          </button>
-          {/* Exterior Calc button */}
-          <button type="button" onClick={() => setShowExtCalc(true)}
-            className={`relative inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border text-xs font-bold transition-colors ${exteriorCalc ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-white border-[var(--color-np-border)] text-[var(--color-np-text)] hover:border-amber-300 hover:text-amber-700'}`}>
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-            Exterior Calc
-            {exteriorCalc && <span className="w-2 h-2 rounded-full bg-amber-500 absolute -top-1 -right-1" />}
-          </button>
-          <div className="w-px h-6 bg-[var(--color-np-border)]" />
           <button type="button" onClick={() => save('draft')} disabled={saving}
             className="px-4 py-2 rounded-xl border border-[var(--color-np-border)] text-xs font-bold text-[var(--color-np-text)] hover:bg-[var(--color-np-gray)] disabled:opacity-50 transition-colors">
             Save Draft
@@ -826,37 +823,49 @@ export default function QuotationBuilder({ quotationId, clientId: initClientId, 
         </div>
       )}
 
-      {/* ── Calc summaries (if saved) ── */}
-      {(interiorCalc || exteriorCalc) && (
-        <div className="px-6 pt-4 flex gap-3 flex-wrap">
+      {/* ── Measurements ── */}
+      <div className="px-6 pt-4 flex flex-wrap gap-4 items-start">
+        {/* Interior Calc */}
+        <div className="flex flex-col gap-1.5">
+          <button type="button" onClick={() => setShowIntCalc(true)}
+            className={`relative inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border text-xs font-bold transition-colors ${interiorCalc ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-[var(--color-np-border)] text-[var(--color-np-text)] hover:border-indigo-300 hover:text-indigo-700'}`}>
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+            Interior Calc
+            {interiorCalc && <span className="w-2 h-2 rounded-full bg-indigo-500 absolute -top-1 -right-1" />}
+          </button>
           {interiorCalc && (
-            <div className="flex items-center gap-3 bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-2.5 text-xs">
-              <span className="font-bold text-indigo-700">Interior</span>
+            <div className="flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-xl px-3 py-2 text-xs flex-wrap">
               <span className="text-indigo-600">{interiorCalc.netWallArea?.toFixed(0)} sq ft net</span>
-              <span className="text-indigo-500">·</span>
+              <span className="text-indigo-400">·</span>
               <span className="text-indigo-600">Primer {roundUpToHalf(interiorCalc.primerLitres || 0).toFixed(1)} L</span>
-              <span className="text-indigo-500">·</span>
+              <span className="text-indigo-400">·</span>
               <span className="text-indigo-600">Wall {roundUpToHalf(interiorCalc.interiorLitres || 0).toFixed(1)} L</span>
-              <span className="text-indigo-500">·</span>
+              <span className="text-indigo-400">·</span>
               <span className="text-indigo-600">Ceiling {roundUpToHalf(interiorCalc.ceilingLitres || 0).toFixed(1)} L</span>
-              <button type="button" onClick={() => setShowIntCalc(true)} className="text-indigo-500 hover:text-indigo-700 transition-colors ml-1">Edit</button>
-            </div>
-          )}
-          {exteriorCalc && (
-            <div className="flex items-center gap-3 bg-amber-50 border border-amber-100 rounded-xl px-4 py-2.5 text-xs">
-              <span className="font-bold text-amber-700">Exterior</span>
-              <span className="text-amber-600">{exteriorCalc.netArea?.toFixed(0)} sq ft net</span>
-              <span className="text-amber-500">·</span>
-              <span className="text-amber-600">Primer {roundUpToHalf(exteriorCalc.primerLitres || 0).toFixed(1)} L</span>
-              <span className="text-amber-500">·</span>
-              <span className="text-amber-600">Wall {roundUpToHalf(exteriorCalc.paintLitres || 0).toFixed(1)} L</span>
-              <span className="text-amber-500">·</span>
-              <span className="text-amber-600">Terrace {roundUpToHalf(exteriorCalc.terraceLitres || 0).toFixed(1)} L</span>
-              <button type="button" onClick={() => setShowExtCalc(true)} className="text-amber-500 hover:text-amber-700 transition-colors ml-1">Edit</button>
             </div>
           )}
         </div>
-      )}
+        {/* Exterior Calc */}
+        <div className="flex flex-col gap-1.5">
+          <button type="button" onClick={() => setShowExtCalc(true)}
+            className={`relative inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border text-xs font-bold transition-colors ${exteriorCalc ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-white border-[var(--color-np-border)] text-[var(--color-np-text)] hover:border-amber-300 hover:text-amber-700'}`}>
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+            Exterior Calc
+            {exteriorCalc && <span className="w-2 h-2 rounded-full bg-amber-500 absolute -top-1 -right-1" />}
+          </button>
+          {exteriorCalc && (
+            <div className="flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 text-xs flex-wrap">
+              <span className="text-amber-600">{exteriorCalc.netArea?.toFixed(0)} sq ft net</span>
+              <span className="text-amber-400">·</span>
+              <span className="text-amber-600">Primer {roundUpToHalf(exteriorCalc.primerLitres || 0).toFixed(1)} L</span>
+              <span className="text-amber-400">·</span>
+              <span className="text-amber-600">Wall {roundUpToHalf(exteriorCalc.paintLitres || 0).toFixed(1)} L</span>
+              <span className="text-amber-400">·</span>
+              <span className="text-amber-600">Terrace {roundUpToHalf(exteriorCalc.terraceLitres || 0).toFixed(1)} L</span>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* ── Product line items table ── */}
       <div className="flex-1 px-6 py-4">
@@ -919,6 +928,7 @@ export default function QuotationBuilder({ quotationId, clientId: initClientId, 
                         <span className="text-[10px] text-[var(--color-np-muted)] font-semibold">#{i + 1}</span>
                         <p className="font-semibold text-[var(--color-np-text)] text-sm mt-0.5">{item.productName}</p>
                         {item.productData?.productType && <p className="text-xs text-[var(--color-np-muted)] capitalize">{item.productData.productType}</p>}
+                        {item.totalLitres > 0 && <p className="text-[11px] font-semibold text-indigo-600">{Math.round(item.totalLitres * 110)} sq ft</p>}
                       </div>
                       <button type="button" onClick={() => setItems((prev) => prev.filter((x) => x.id !== item.id))}
                         className="text-xs text-red-500 font-semibold flex-shrink-0 ml-2">Remove</button>

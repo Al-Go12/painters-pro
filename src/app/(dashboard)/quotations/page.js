@@ -172,7 +172,10 @@ export default function QuotationsPage() {
                       <td className="px-4 py-3.5 font-bold text-[var(--color-np-text)]">₹{fmtINR(q.grandTotal || q.totalAmount)}</td>
                       <td className="px-4 py-3.5">
                         {isRelease
-                          ? <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">{q.releaseOrder.orderNumber}</span>
+                          ? <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black text-white animate-pulse"
+                              style={{ background: 'linear-gradient(135deg,#f97316 0%,#ec4899 50%,#8b5cf6 100%)', boxShadow: '0 0 10px rgba(236,72,153,0.55)' }}>
+                              ⚡ {q.releaseOrder.orderNumber}
+                            </span>
                           : <StatusBadge status={q.status} />
                         }
                       </td>
@@ -227,7 +230,10 @@ export default function QuotationsPage() {
                       <p className="text-xs text-[var(--color-np-muted)] mt-0.5">{fmtDate(q.createdAt)}</p>
                     </div>
                     {isRelease
-                      ? <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">{q.releaseOrder.orderNumber}</span>
+                      ? <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black text-white animate-pulse"
+                          style={{ background: 'linear-gradient(135deg,#f97316 0%,#ec4899 50%,#8b5cf6 100%)', boxShadow: '0 0 10px rgba(236,72,153,0.55)' }}>
+                          ⚡ {q.releaseOrder.orderNumber}
+                        </span>
                       : <StatusBadge status={q.status} />
                     }
                   </div>
