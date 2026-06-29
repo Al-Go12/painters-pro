@@ -578,7 +578,9 @@ export default function QuotationBuilder({ quotationId, clientId: initClientId, 
     `,
   });
 
-  const clientId = initClientId || quotation?.clientId;
+  const rawClientId = quotation?.clientId;
+  const clientId = initClientId
+    || (rawClientId && typeof rawClientId === 'object' ? String(rawClientId._id) : String(rawClientId || ''));
 
   /* Load everything on mount */
   useEffect(() => {
@@ -605,11 +607,9 @@ export default function QuotationBuilder({ quotationId, clientId: initClientId, 
           setDiscountType(q.discountType  || 'flat');
           setDiscountValue(q.discountValue || 0);
 
-          /* Load client */
+          /* clientId is populated by the API — use it directly */
           if (!initClient && q.clientId) {
-            const cRes  = await fetch(`/api/clients/${q.clientId}`);
-            const cData = await cRes.json();
-            setClient(cData.client);
+            setClient(typeof q.clientId === 'object' ? q.clientId : null);
           }
         } else if (initClientId && !initClient) {
           /* New mode — load client info */
@@ -762,24 +762,33 @@ export default function QuotationBuilder({ quotationId, clientId: initClientId, 
 
   return (
     <div className="flex flex-col gap-0 min-h-full">
+
+      {/* ── Back button — above the header strip ── */}
+      <div className="px-5 pt-4 pb-2">
+        <button
+          type="button"
+          onClick={() => router.push(`/clients/${clientId}`)}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[var(--color-np-border)] bg-white text-xs font-semibold text-[var(--color-np-muted)] hover:text-[var(--color-np-red)] hover:border-[var(--color-np-red-light)] shadow-sm transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+          Back
+        </button>
+      </div>
+
       {/* ── Top header bar ── */}
-      <div className="bg-white border-b border-[var(--color-np-border)] px-5 py-3 flex items-center justify-between gap-3 sticky top-0 z-10">
-        <div className="flex items-center gap-3 min-w-0">
-          <button type="button" onClick={() => router.push(`/clients/${clientId}`)}
-            className="text-[var(--color-np-muted)] hover:text-[var(--color-np-red)] transition-colors flex-shrink-0">
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
-          </button>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <p className="font-bold text-[var(--color-np-text)] text-sm truncate">{client?.name || '—'}</p>
-              <span className="text-[10px] font-mono text-[var(--color-np-muted)] bg-[var(--color-np-gray)] px-1.5 py-0.5 rounded flex-shrink-0">{qNum}</span>
-            </div>
-            {quotation?.createdAt && (
-              <p className="text-[11px] text-[var(--color-np-muted)] mt-0.5">
-                {new Date(quotation.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-              </p>
-            )}
+      <div className="bg-[var(--color-np-gray)] border-b border-[var(--color-np-border)] px-5 py-3 flex items-center justify-between gap-3 sticky top-0 z-10">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            {client?.name && <p className="font-bold text-[var(--color-np-text)] text-sm truncate">{client.name}</p>}
+            <span className="text-[10px] font-mono text-[var(--color-np-muted)] bg-white px-1.5 py-0.5 rounded border border-[var(--color-np-border)] flex-shrink-0">{qNum}</span>
           </div>
+          {quotation?.createdAt && (
+            <p className="text-[11px] text-[var(--color-np-muted)] mt-0.5">
+              {new Date(quotation.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           {quotationId && (
@@ -791,7 +800,7 @@ export default function QuotationBuilder({ quotationId, clientId: initClientId, 
                 </svg>
               </button>
               <button type="button" onClick={() => handlePrint()} title="Print"
-                className="p-2 rounded-lg border border-[var(--color-np-border)] text-[var(--color-np-muted)] hover:bg-[var(--color-np-gray)] transition-colors">
+                className="p-2 rounded-lg border border-[var(--color-np-border)] text-[var(--color-np-muted)] hover:bg-white transition-colors">
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                 </svg>
@@ -800,7 +809,7 @@ export default function QuotationBuilder({ quotationId, clientId: initClientId, 
             </>
           )}
           <button type="button" onClick={() => save('draft')} disabled={saving}
-            className="px-3 py-2 rounded-lg text-xs font-semibold text-[var(--color-np-muted)] hover:text-[var(--color-np-text)] hover:bg-[var(--color-np-gray)] disabled:opacity-50 transition-colors">
+            className="px-3 py-2 rounded-lg text-xs font-semibold text-[var(--color-np-muted)] hover:text-[var(--color-np-text)] hover:bg-white disabled:opacity-50 transition-colors">
             Draft
           </button>
           <button type="button" onClick={() => save('saved')} disabled={saving}
